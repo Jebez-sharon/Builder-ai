@@ -2,7 +2,7 @@ import React, {useEffect, useRef, useState} from "react"
 import { ArrowRightIcon, CloudUploadIcon, Loader2Icon , MicIcon} from 'lucide-react'
 
 const PromptInput =({
-    onsubmit,
+    onSubmit,
     loading=false,
     placeholder="Describe the website you want to build...",
     large = false,
@@ -84,8 +84,9 @@ const PromptInput =({
     }
     
     return (
-        <div className={`flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/80
-            transition-colors focus-within:border-zinc-700 ${large ? 'p-4' : 'p-3'}`}>
+        <div className={`flex items-end gap-2 rounded-2xl border border-zinc-200 bg-white
+            shadow-sm transition-all focus-within:border-zinc-400 focus-within:shadow-md focus-within:ring-4
+            focus-within:ring-zinc-900/[0.04] ${large ? 'p-3.5' : 'p-2.5'}`}>
                 <textarea 
                 ref = {textareaRef}
                 value={value}
@@ -94,7 +95,7 @@ const PromptInput =({
                 placeholder={placeholder}
                 disabled={loading}
                 rows={ large ? 5 : 1 }
-                className={`w-full resize-none bg-transparent text-white placeholder:bg-zinc-500 outline-none ${
+                className={`w-full resize-none bg-transparent text-zinc-900 placeholder:text-zinc-400 outline-none px-1.5 py-1 leading-relaxed disabled:opacity-50 ${
                     large ? 'text-base' : 'text-sm'
                 }`}
                 />
@@ -107,8 +108,9 @@ const PromptInput =({
                     width:large ? 36 :24,
                     height: large ? 36 : 24
                 }}
-                className="flex items-center justify-center rounded-lg bg-white text-zinc-900
-                hover:bg-zinc-200 transition disabled:opacity-30 disabled:cursor-not-allowed shrink-0
+                className="flex items-center justify-center rounded-xl bg-zinc-900 text-white
+                hover:bg-zinc-700 active:scale-95 transition-all disabled:opacity-20
+                disabled:cursor-not-allowed disabled:hover:bg-zinc-900 shrink-0
                 cursor-pointer">
                     {
                         loading?(

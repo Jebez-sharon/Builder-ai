@@ -1,7 +1,8 @@
-import { createContext, useState, useContext, useEffect, useCallback } from "react";
+import { createContext, useState, useContext, useEffect, useCallback, useMemo } from "react";
 import api from "../api/api";
 import toast from "react-hot-toast"
 import {useNavigate} from "react-router-dom"
+import debounce from 'lodash.debounce'
 
 const AppContext = createContext(undefined);
 
@@ -19,7 +20,7 @@ export function AppContextProvider({children}){
     const [loadingActiveProject, setLoadingActiveProject] = useState(true)
     const [chatLoading, setChatLoading] = useState(false)
     const [generatingProject, setGeneratingProject] = useState(false)
-    const [activeFile, setActiveFile] = useState('/app.js')
+    const [activeFile, setActiveFile] = useState('/App.js')
     const [showCode, setShowCode] = useState(false)
 
     // Auth Actions
@@ -36,7 +37,7 @@ export function AppContextProvider({children}){
 
     useEffect(() => {
         checkSession()
-    },[checkSession])
+    },[])
 
 
     const login = async(email, password) => {
@@ -86,23 +87,29 @@ export function AppContextProvider({children}){
         }
         catch(error){
             console.error(error)
-            toast.error('login failed')
+            toast.error('logout failed')
         }
     }
 
     // project actions
-    const loadProjects = async () =>{
-        if (!user) return
-        try {
-            const { data } = await api.get('/api/projects')
-            setProjects(data)
-        }catch(error){
-            console.error("Failed to list projects:", error)
-            toast.error('Failed to load project list')
-        }finally{
-            setLoadingProjects(false)
+    const loadProjects = useCallback(
+    async () => {
+        if (!user) {
+            setLoadingProjects(false);
+            return;
         }
-    }
+        
+        try {
+            const { data } = await api.get('/api/projects');
+            setProjects(data);
+        } catch(error) {
+            console.error("Failed to list projects:", error);
+            toast.error('Failed to load project list');
+        } finally {
+            setLoadingProjects(false);
+        }
+    }, [user]
+)
 
     const loadProject = async(id, silent = false) => {
         if (!user) return
@@ -160,7 +167,7 @@ export function AppContextProvider({children}){
         } else{
             setChatLoading(false)
         }
-    }, [activeProject?._id, activeProject?.status, loadProject, user])
+    }, [activeProject?._id, activeProject?.status, user])
 
     const handleGenerate = useCallback(
         async (prompt) =>{
@@ -196,7 +203,52 @@ export function AppContextProvider({children}){
         },[user]
     )
 
+    const handleChat =useCallback(
+        async (prompt) => {
+            if(!activeProject || !user) return
+            setChatLoading(true)
+            try{
+                const {data} = await api.post(`/api/projects/${activeProject._id}/chat`,{ prompt})
+                setActiveProject(data)
+                if (data.errors && data.errors.length >0){
+                    toast.error(`${data.errors.length} revision patch(es) failed`);
+                } else {
+                    toast.success(`Updated to version ${data.version}`)
+                }
+            }catch(error){
+                console.error(error)
+                toast.error(error?.response?.data?.error || 'Failed to update project')
+            }finally{
+                setChatLoading(false)
+            }
+        },
+        [activeProject, user]
+    )
 
+    const debounceSave = useMemo(
+        () => debounce(async (files, id) => {
+            try{
+                await api.put(`/api/projects/${id}/files`, {files})
+            } catch(error){
+                console.error("Failed to auto-save files:",error)
+                toast.error('Failed to save code modifications')
+            }
+        },1000),
+        []
+    )
+
+    useEffect(() => {
+        return ()=>{
+            debounceSave.flush()
+        }
+    }, [debounceSave])
+
+    const updateProjectFiles = useCallback(
+        (files) => {
+            if(!activeProject || !user) return
+            debounceSave(files, activeProject._id)
+        },[activeProject, user, debounceSave]
+    )
 
     return(
         <AppContext.Provider  value={{
@@ -212,12 +264,15 @@ export function AppContextProvider({children}){
             generatingProject,
             activeFile,
             showCode,
+            setShowCode,
             setActiveFile,
             loadProjects,
             loadProject,
             handleGenerate,
             handleDelete,
-            logout
+            logout,
+            handleChat,
+            updateProjectFiles
         }}>
             {children}
         </AppContext.Provider>
